@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dog Run – MVP</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🐶</text></svg>">
+  <style>
+    body {
+      margin: 0;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; font-family: Arial, sans-serif; background: #222;
+    }
+    #gameContainer { position: relative; border: 3px solid #333; border-radius: 10px; overflow: hidden; }
+    #gameCanvas { display: block; background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 70%, #228B22 100%); }
+    /* HUD */
+    #ui {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      color: #fff; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,.8);
+    }
+    /* Game Over overlay */
+    #gameOver {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(0,0,0,.9); color: #fff; padding: 24px 28px; border-radius: 12px;
+      border: 3px solid #ff4444; text-align: center; font-size: 22px; display: none; z-index: 20;
+    }
+    #instructions {
+      position: absolute; bottom: 10px; left: 10px; color: #fff; font-size: 14px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,.8); z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
+
+    <div id="ui">
+      <div>Score: <span id="score">0</span></div>
+      <div>Distance: <span id="distance">0</span>m</div>
+      <div>Time: <span id="time">0</span>s</div>
+    </div>
+
+    <div id="instructions">
+      <div>WASD/Arrow Keys to move</div>
+      <div>Space/W/↑ to jump (single jump)</div>
+      <div>R to restart</div>
+    </div>
+
+    <div id="gameOver">
+      <h3 style="margin:0 0 10px;color:#ff6666;">Game Over</h3>
+      <div style="margin: 10px 0;">Final Score: <span id="finalScore">0</span></div>
+      <div style="margin: 10px 0;">Distance: <span id="finalDistance">0</span>m</div>
+      <div style="margin: 10px 0;">Time: <span id="finalTime">0</span>s</div>
+      <div style="margin-top:8px;color:#ffff66;">Press R to Restart</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Constants
+    const GRAVITY = 0.8;
+    const JUMP_FORCE = 15;     // single jump
+    const PLAYER_SPEED = 6;
+    const GROUND_HEIGHT = 100;
+
+    // Obstacle spawn
+    const SPAWN_MS = 1500;         // every ~1.5s
+    const OB_MIN_WIDTH = 30, OB_MAX_WIDTH = 60;
+    const OB_MIN_HEIGHT = 40, OB_MAX_HEIGHT = 90;
+
+    // State
+    let gameState = null;
+    function initState() {
+      return {
+        player: {
+          x: 100, y: canvas.height - GROUND_HEIGHT - 60,
+          width: 50, height: 50,
+          velY: 0, onGround: true, jumpsRemaining: 1, facingRight: true
+        },
+        camera: { x: 0 },
+        obstacles: [],
+        score: 0, distance: 0,
+        gameTime: 0, lastSpawn: 0,
+        gameOver: false,
+        keys: {}
+      };
+    }
+    gameState = initState();
+
+    // Input
+    const JUMP_KEYS = ['Space','KeyW','ArrowUp'];
+    document.addEventListener('keydown', e => {
+      gameState.keys[e.code] = true;
+
+      if (JUMP_KEYS.includes(e.code) && !gameState.gameOver) {
+        if (gameState.player.onGround && gameState.player.jumpsRemaining > 0) {
+          gameState.player.velY = -JUMP_FORCE;
+          gameState.player.onGround = false;
+          gameState.player.jumpsRemaining = 0; // single jump only
+        }
+      }
+      if (e.code === 'KeyR') restart();
+
+      // prevent page scroll
+      if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
+    });
+    document.addEventListener('keyup', e => { gameState.keys[e.code] = false; });
+
+    function restart() {
+      gameState = initState();
+      document.getElementById('gameOver').style.display = 'none';
+    }
+
+    // Logic
+    function spawnObstacle() {
+      const w = Math.floor(Math.random() * (OB_MAX_WIDTH - OB_MIN_WIDTH + 1)) + OB_MIN_WIDTH;
+      const h = Math.floor(Math.random() * (OB_MAX_HEIGHT - OB_MIN_HEIGHT + 1)) + OB_MIN_HEIGHT;
+      const spawnX = gameState.camera.x + canvas.width + 80; // ahead of camera
+      gameState.obstacles.push({
+        x: spawnX,
+        y: canvas.height - GROUND_HEIGHT - h,
+        width: w,
+        height: h,
+        color: '#6a6a6a',
+        passed: false
+      });
+    }
+
+    function updatePlayer() {
+      const p = gameState.player;
+
+      if (gameState.keys['ArrowLeft'] || gameState.keys['KeyA']) { p.x -= PLAYER_SPEED; p.facingRight = false; }
+      if (gameState.keys['ArrowRight'] || gameState.keys['KeyD']) { p.x += PLAYER_SPEED; p.facingRight = true; }
+
+      p.velY += GRAVITY;
+      p.y += p.velY;
+
+      const groundY = canvas.height - GROUND_HEIGHT - p.height;
+      if (p.y >= groundY) {
+        p.y = groundY; p.velY = 0; p.onGround = true; p.jumpsRemaining = 1;
+      }
+
+      // Camera follows player
+      gameState.camera.x = p.x - canvas.width / 3;
+    }
+
+    function updateObstacles(now) {
+      if (now - gameState.lastSpawn > SPAWN_MS) {
+        spawnObstacle();
+        gameState.lastSpawn = now;
+      }
+
+      // Remove off-screen
+      gameState.obstacles = gameState.obstacles.filter(o => o.x > gameState.camera.x - 200);
+
+      // Collisions + scoring
+      const p = gameState.player;
+      for (const o of gameState.obstacles) {
+        // collision
+        if (p.x < o.x + o.width && p.x + p.width > o.x && p.y < o.y + o.height && p.y + p.height > o.y) {
+          gameState.gameOver = true;
+          document.getElementById('gameOver').style.display = 'block';
+          document.getElementById('finalScore').textContent = gameState.score;
+          document.getElementById('finalDistance').textContent = Math.floor(gameState.distance);
+          document.getElementById('finalTime').textContent = Math.floor(gameState.gameTime / 1000);
+        }
+        // passed
+        if (!o.passed && p.x > o.x + o.width) {
+          o.passed = true;
+          gameState.score += 10;
+        }
+      }
+    }
+
+    function updateScore() {
+      const newDistance = Math.max(0, Math.abs(gameState.player.x - 100) / 10);
+      const delta = Math.floor(newDistance - gameState.distance);
+      if (delta > 0) gameState.score += delta;
+      gameState.distance = newDistance;
+    }
+
+    // Draw
+    function drawGround() {
+      const groundY = canvas.height - GROUND_HEIGHT;
+      ctx.fillStyle = '#32cd32';
+      ctx.fillRect(-gameState.camera.x, groundY, canvas.width * 3, GROUND_HEIGHT);
+    }
+
+    function drawPlayer() {
+      const p = gameState.player;
+      const sx = p.x - gameState.camera.x;
+      ctx.fillStyle = '#ffdf00';
+      ctx.fillRect(sx, p.y, p.width, p.height);
+      // simple eye to show facing
+      ctx.fillStyle = '#333';
+      const eyeX = sx + (p.facingRight ? p.width - 12 : 4);
+      ctx.fillRect(eyeX, p.y + 12, 6, 6);
+    }
+
+    function drawObstacles() {
+      for (const o of gameState.obstacles) {
+        const sx = o.x - gameState.camera.x;
+        ctx.fillStyle = o.color;
+        ctx.fillRect(sx, o.y, o.width, o.height);
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('score').textContent = gameState.score;
+      document.getElementById('distance').textContent = Math.floor(gameState.distance);
+      document.getElementById('time').textContent = Math.floor(gameState.gameTime / 1000);
+    }
+
+    // Loop
+    function loop(now) {
+      if (!gameState.gameOver) {
+        gameState.gameTime = now;
+        updatePlayer();
+        updateObstacles(now);
+        updateScore();
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGround();
+      drawObstacles();
+      drawPlayer();
+      updateUI();
+
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
