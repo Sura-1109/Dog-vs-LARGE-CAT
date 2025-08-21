@@ -1,237 +1,708 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dog Run – MVP</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🐶</text></svg>">
-  <style>
-    body {
-      margin: 0;
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; font-family: Arial, sans-serif; background: #222;
-    }
-    #gameContainer { position: relative; border: 3px solid #333; border-radius: 10px; overflow: hidden; }
-    #gameCanvas { display: block; background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 70%, #228B22 100%); }
-    /* HUD */
-    #ui {
-      position: absolute; top: 10px; left: 10px; z-index: 10;
-      color: #fff; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,.8);
-    }
-    /* Game Over overlay */
-    #gameOver {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(0,0,0,.9); color: #fff; padding: 24px 28px; border-radius: 12px;
-      border: 3px solid #ff4444; text-align: center; font-size: 22px; display: none; z-index: 20;
-    }
-    #instructions {
-      position: absolute; bottom: 10px; left: 10px; color: #fff; font-size: 14px;
-      text-shadow: 1px 1px 2px rgba(0,0,0,.8); z-index: 10;
-    }
-  </style>
-</head>
-<body>
-  <div id="gameContainer">
-    <canvas id="gameCanvas" width="900" height="600"></canvas>
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dog vs Cat</title>
+    
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(to bottom, #4accff 0%, #51aa51 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: Courier New, sans-serif;
+        overflow: hidden;
+      }
 
-    <div id="ui">
-      <div>Score: <span id="score">0</span></div>
-      <div>Distance: <span id="distance">0</span>m</div>
-      <div>Time: <span id="time">0</span>s</div>
+      #gameContainer { position: relative; border: 3px solid #333; border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+
+      #gameCanvas {
+        display: block;
+        background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 70%, #228B22 100%);
+      }
+
+      #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: #fff;
+        font-size: 18px;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        z-index: 10;
+      }
+
+      #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: #fff;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        font-size: 24px;
+        display: none;
+        z-index: 20;
+        border: 3px solid #ff4444;
+      }
+
+      #instructions {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        color: #fff;
+        font-size: 14px;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        z-index: 10;
+      }
+
+      .jump-indicator {
+        position: absolute;
+        top: 50px;
+        right: 20px;
+        display: flex;
+        gap: 5px;
+      }
+
+      .jump-circle {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #ffff00;
+        border: 2px solid #333;
+        transition: opacity 0.2s;
+      }
+
+      .jump-circle.used {
+        opacity: 0.3;
+        background: #666;
+      }
+
+      #tigerWarning {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 0, 0, 0.9);
+        color: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        display: none;
+        border: 3px solid #ff4444;
+        animation: pulse 1s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.05);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameContainer">
+      <canvas id="gameCanvas" width="900" height="600"></canvas>
+
+      <div id="ui">
+        <div>your sccore: <span id="score">0</span></div>
+        <div>distance you're travelling: <span id="distance">0</span>m</div>
+        <div style="margin-top: 10px">Time you're surviving: <span id="time">0</span>s</div>
+        <div id="tigerStatus" style="color: #ffff00; margin-top: 5px"></div>
+      </div>
+
+      <div class="jump-indicator">
+        <div class="jump-circle" id="jump1"></div>
+        <div class="jump-circle" id="jump2"></div>
+      </div>
+
+      <div id="instructions">
+        <div>Press/Use WASD/UP/LEFT/RIGHT ARRPOWS to move 👟</div>
+        <div>Clickr SPACE/W/UP ARROW (double click to double jump!) 🦘</div>
+        <div>Click R to restart</div>
+        <div style="margin-top: 5px; color: #ffff00">⚡tiger's appearing after like 10 seconds!</div>
+      </div>
+
+      <div id="tigerWarning">
+        🐅 A Tiger is after your tail! RUN! 🐯 <br />
+        <div style="font-size: 16px; margin-top: 10px">GANG RUN FOR UR LIFE!</div>
+      </div>
+
+      <div id="gameOver">
+        <h2 style="color: #ff4444; margin-top: 0">Game's over kids, ggs</h2>
+        <div style="margin: 20px 0">
+          <div>Final Score: <span id="finalScore">0</span></div>
+          <div>Distance you travelled: <span id="finalDistance">0</span>m</div>
+          <div>Time you managed to survive: <span id="finalTime">0</span>s</div>
+        </div>
+        <div style="font-size: 18px; color: #ffff00">Click on R to restart</div>
+      </div>
     </div>
 
-    <div id="instructions">
-      <div>WASD/Arrow Keys to move</div>
-      <div>Space/W/↑ to jump (single jump)</div>
-      <div>R to restart</div>
-    </div>
+    <script>
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
 
-    <div id="gameOver">
-      <h3 style="margin:0 0 10px;color:#ff6666;">Game Over</h3>
-      <div style="margin: 10px 0;">Final Score: <span id="finalScore">0</span></div>
-      <div style="margin: 10px 0;">Distance: <span id="finalDistance">0</span>m</div>
-      <div style="margin: 10px 0;">Time: <span id="finalTime">0</span>s</div>
-      <div style="margin-top:8px;color:#ffff66;">Press R to Restart</div>
-    </div>
-  </div>
+      // constant values
+      const GRAVITY = 1.0;
+      const JUMP_FORCE = 20;
+      const PLAYER_SPEED = 7;
+      const OBSTACLE_SPEED = 4;
+      const GROUND_HEIGHT = 150;
+      const TIGER_SPAWN_TIME = 10;
+      const TIGER_SPEED = 5;
+      const TIGER_CATCH_DISTANCE = 40;
+      const TIGER_JUMP_FORCE = 12;
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+      // sprites
+      const dogSprite = new Image();
+      dogSprite.src = 'dog.png';
+      const tigerSprite = new Image();
+      tigerSprite.src = 'tiger.png';
 
-    // Constants
-    const GRAVITY = 0.8;
-    const JUMP_FORCE = 15;     // single jump
-    const PLAYER_SPEED = 6;
-    const GROUND_HEIGHT = 100;
+      // sound effects
+      const jumpSound = new Audio('jump.mp3');
+      const roarSound = new Audio('roar.mp3');
+      const gameOverSound = new Audio('gameover.mp3');
 
-    // Obstacle spawn
-    const SPAWN_MS = 1500;         // every ~1.5s
-    const OB_MIN_WIDTH = 30, OB_MAX_WIDTH = 60;
-    const OB_MIN_HEIGHT = 40, OB_MAX_HEIGHT = 90;
-
-    // State
-    let gameState = null;
-    function initState() {
-      return {
+      // Game state
+      let gameState = {
         player: {
-          x: 100, y: canvas.height - GROUND_HEIGHT - 60,
-          width: 50, height: 50,
-          velY: 0, onGround: true, jumpsRemaining: 1, facingRight: true
+          x: 100,
+          y: canvas.height - GROUND_HEIGHT - 60,
+          width: 60,
+          height: 60,
+          velY: 0,
+          onGround: true,
+          jumpsRemaining: 2,
+          facingRight: true
+        },
+        tiger: {
+          x: -100,
+          y: canvas.height - GROUND_HEIGHT - 60,
+          width: 70,
+          height: 60,
+          velY: 0,
+          onGround: true,
+          active: false,
+          speed: TIGER_SPEED,
+          chasingRight: true
         },
         camera: { x: 0 },
         obstacles: [],
-        score: 0, distance: 0,
-        gameTime: 0, lastSpawn: 0,
+        particles: [],
+        score: 0,
+        distance: 0,
+        gameTime: 0,
         gameOver: false,
-        keys: {}
+        lastObstacleSpawn: 0,
+        nextObstacleX: 400,
+        keys: {},
+        tigerWarningShown: false
       };
-    }
-    gameState = initState();
 
-    // Input
-    const JUMP_KEYS = ['Space','KeyW','ArrowUp'];
-    document.addEventListener('keydown', e => {
-      gameState.keys[e.code] = true;
+      // Input
+      document.addEventListener('keydown', (e) => {
+        gameState.keys[e.code] = true;
 
-      if (JUMP_KEYS.includes(e.code) && !gameState.gameOver) {
-        if (gameState.player.onGround && gameState.player.jumpsRemaining > 0) {
-          gameState.player.velY = -JUMP_FORCE;
-          gameState.player.onGround = false;
-          gameState.player.jumpsRemaining = 0; // single jump only
+                if (['Space', 'KeyW', 'ArrowUp'].includes(e.code) && !gameState.gameOver) {
+          if (gameState.player.jumpsRemaining > 0) {
+            gameState.player.velY = -JUMP_FORCE;
+            gameState.player.jumpsRemaining--;
+            gameState.player.onGround = false;
+            createJumpParticles();
+            jumpSound.play();
+          }
+        }
+
+        // restart functions
+        if (e.code === 'KeyR') {
+          restartGame();
+        }
+
+        e.preventDefault();
+      });
+
+      document.addEventListener('keyup', (e) => {
+        gameState.keys[e.code] = false;
+      });
+
+      function restartGame() {
+        gameState = {
+          player: {
+            x: 100,
+            y: canvas.height - GROUND_HEIGHT - 60,
+            width: 60,
+            height: 60,
+            velY: 0,
+            onGround: true,
+            jumpsRemaining: 2,
+            facingRight: true
+          },
+          tiger: {
+            x: -100,
+            y: canvas.height - GROUND_HEIGHT - 60,
+            width: 70,
+            height: 60,
+            velY: 0,
+            onGround: true,
+            active: false,
+            speed: TIGER_SPEED,
+            chasingRight: true
+          },
+          camera: { x: 0 },
+          obstacles: [],
+          particles: [],
+          score: 0,
+          distance: 0,
+          gameTime: 0,
+          gameOver: false,
+          lastObstacleSpawn: 0,
+          nextObstacleX: 400,
+          keys: {},
+          tigerWarningShown: false
+        };
+        document.getElementById('gameOver').style.display = 'none';
+        document.getElementById('tigerWarning').style.display = 'none';
+      }
+
+      function createJumpParticles() {
+        for (let i = 0; i < 8; i++) {
+          gameState.particles.push({
+            x: gameState.player.x + gameState.player.width / 2,
+            y: gameState.player.y + gameState.player.height,
+            velX: (Math.random() - 0.5) * 8,
+            velY: Math.random() * -5 - 2,
+            life: 30,
+            maxLife: 30,
+            color: `hsl(${Math.random() * 60 + 180}, 70%, 60%)`
+          });
         }
       }
-      if (e.code === 'KeyR') restart();
 
-      // prevent page scroll
-      if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
-    });
-    document.addEventListener('keyup', e => { gameState.keys[e.code] = false; });
-
-    function restart() {
-      gameState = initState();
-      document.getElementById('gameOver').style.display = 'none';
-    }
-
-    // Logic
-    function spawnObstacle() {
-      const w = Math.floor(Math.random() * (OB_MAX_WIDTH - OB_MIN_WIDTH + 1)) + OB_MIN_WIDTH;
-      const h = Math.floor(Math.random() * (OB_MAX_HEIGHT - OB_MIN_HEIGHT + 1)) + OB_MIN_HEIGHT;
-      const spawnX = gameState.camera.x + canvas.width + 80; // ahead of camera
-      gameState.obstacles.push({
-        x: spawnX,
-        y: canvas.height - GROUND_HEIGHT - h,
-        width: w,
-        height: h,
-        color: '#6a6a6a',
-        passed: false
-      });
-    }
-
-    function updatePlayer() {
-      const p = gameState.player;
-
-      if (gameState.keys['ArrowLeft'] || gameState.keys['KeyA']) { p.x -= PLAYER_SPEED; p.facingRight = false; }
-      if (gameState.keys['ArrowRight'] || gameState.keys['KeyD']) { p.x += PLAYER_SPEED; p.facingRight = true; }
-
-      p.velY += GRAVITY;
-      p.y += p.velY;
-
-      const groundY = canvas.height - GROUND_HEIGHT - p.height;
-      if (p.y >= groundY) {
-        p.y = groundY; p.velY = 0; p.onGround = true; p.jumpsRemaining = 1;
+      function createCrashParticles() {
+        for (let i = 0; i < 15; i++) {
+          gameState.particles.push({
+            x: gameState.player.x + gameState.player.width / 2,
+            y: gameState.player.y + gameState.player.height / 2,
+            velX: (Math.random() - 0.5) * 12,
+            velY: (Math.random() - 0.5) * 12,
+            life: 60,
+            maxLife: 60,
+            color: `hsl(${Math.random() * 60}, 100%, 50%)`
+          });
+        }
       }
 
-      // Camera follows player
-      gameState.camera.x = p.x - canvas.width / 3;
-    }
+      function spawnObstacle(direction) {
+        const types = ['cactus', 'rock', 'spike'];
+        const type = types[Math.floor(Math.random() * types.length)];
 
-    function updateObstacles(now) {
-      if (now - gameState.lastSpawn > SPAWN_MS) {
-        spawnObstacle();
-        gameState.lastSpawn = now;
+        let width, height, color;
+        switch (type) {
+          case 'cactus':
+            width = 30;
+            height = 80;
+            color = '#228B22';
+            break;
+          case 'rock':
+            width = 50;
+            height = 40;
+            color = '#696969';
+            break;
+          case 'spike':
+            width = 25;
+            height = 60;
+            color = '#8B4513';
+            break;
+        }
+
+        const spawnX =
+          direction === 'right'
+            ? gameState.camera.x + canvas.width + 50
+            : gameState.camera.x - 50 - width;
+
+        gameState.obstacles.push({
+          x: spawnX,
+          y: canvas.height - GROUND_HEIGHT - height,
+          width,
+          height,
+          type,
+          color,
+          passed: false
+        });
+
+        gameState.nextObstacleX =
+          direction === 'right'
+            ? spawnX + Math.random() * 200 + 300
+            : spawnX - Math.random() * 200 - 300;
       }
 
-      // Remove off-screen
-      gameState.obstacles = gameState.obstacles.filter(o => o.x > gameState.camera.x - 200);
+      function updatePlayer() {
+        // right/left movement
+        if (gameState.keys['ArrowLeft'] || gameState.keys['KeyA']) {
+          gameState.player.x -= PLAYER_SPEED;
+          gameState.player.facingRight = false;
+        }
+        if (gameState.keys['ArrowRight'] || gameState.keys['KeyD']) {
+          gameState.player.x += PLAYER_SPEED;
+          gameState.player.facingRight = true;
+        }
 
-      // Collisions + scoring
-      const p = gameState.player;
-      for (const o of gameState.obstacles) {
+        // gravity
+        gameState.player.velY += GRAVITY;
+        gameState.player.y += gameState.player.velY;
+
         // collision
-        if (p.x < o.x + o.width && p.x + p.width > o.x && p.y < o.y + o.height && p.y + p.height > o.y) {
+        const groundY = canvas.height - GROUND_HEIGHT - gameState.player.height;
+        if (gameState.player.y >= groundY) {
+          gameState.player.y = groundY;
+          gameState.player.velY = 0;
+          gameState.player.onGround = true;
+          gameState.player.jumpsRemaining = 2;
+        }
+
+        // if you jump over the tiger, u get a bonus :)
+        if (gameState.tiger.active && gameState.player.jumpsRemaining > 0) {
+          const distanceToTiger = Math.abs(gameState.player.x - gameState.tiger.x);
+          if (distanceToTiger < 100 && gameState.player.y < gameState.tiger.y - 20) {
+            gameState.tiger.chasingRight = !gameState.tiger.chasingRight;
+            gameState.player.facingRight = !gameState.player.facingRight;
+            gameState.score += 50; 
+          }
+        }
+
+        // Camera following player
+        gameState.camera.x = gameState.player.x - canvas.width / 3;
+      }
+
+      function updateTiger() {
+        if (!gameState.tiger.active) return;
+
+        // Tiger chasing player
+        const distanceToPlayer = gameState.player.x - gameState.tiger.x;
+        if (Math.abs(distanceToPlayer) > TIGER_CATCH_DISTANCE) {
+          gameState.tiger.x += gameState.tiger.chasingRight
+            ? gameState.tiger.speed
+            : -gameState.tiger.speed;
+        } else {
           gameState.gameOver = true;
+          createCrashParticles();
           document.getElementById('gameOver').style.display = 'block';
           document.getElementById('finalScore').textContent = gameState.score;
           document.getElementById('finalDistance').textContent = Math.floor(gameState.distance);
           document.getElementById('finalTime').textContent = Math.floor(gameState.gameTime / 1000);
+          gameOverSound.play();
         }
-        // passed
-        if (!o.passed && p.x > o.x + o.width) {
-          o.passed = true;
-          gameState.score += 10;
+
+        // Tiger needs to avoid obstacles
+        gameState.obstacles.forEach((obstacle) => {
+          const distanceToObstacle = gameState.tiger.chasingRight
+            ? obstacle.x - gameState.tiger.x
+            : gameState.tiger.x - (obstacle.x + obstacle.width);
+          if (distanceToObstacle < 100 && distanceToObstacle > 0 && gameState.tiger.onGround) {
+            gameState.tiger.velY = -TIGER_JUMP_FORCE;
+            gameState.tiger.onGround = false;
+          }
+        });
+
+        // Gravity for tiger
+        gameState.tiger.velY += GRAVITY;
+        gameState.tiger.y += gameState.tiger.velY;
+
+        // collision for tiger
+        const groundY = canvas.height - GROUND_HEIGHT - gameState.tiger.height;
+        if (gameState.tiger.y >= groundY) {
+          gameState.tiger.y = groundY;
+          gameState.tiger.velY = 0;
+          gameState.tiger.onGround = true;
         }
       }
-    }
 
-    function updateScore() {
-      const newDistance = Math.max(0, Math.abs(gameState.player.x - 100) / 10);
-      const delta = Math.floor(newDistance - gameState.distance);
-      if (delta > 0) gameState.score += delta;
-      gameState.distance = newDistance;
-    }
+      function updateObstacles() {
+        // Spawn obstacles randomly in the direction the player is moving
+        if (gameState.gameTime - gameState.lastObstacleSpawn > 2000) {
+          spawnObstacle(gameState.player.facingRight ? 'right' : 'left');
+          gameState.lastObstacleSpawn = gameState.gameTime;
+        }
 
-    // Draw
-    function drawGround() {
-      const groundY = canvas.height - GROUND_HEIGHT;
-      ctx.fillStyle = '#32cd32';
-      ctx.fillRect(-gameState.camera.x, groundY, canvas.width * 3, GROUND_HEIGHT);
-    }
+        // Remove obstacles that are far off-screen
+        gameState.obstacles = gameState.obstacles.filter(
+          (obstacle) =>
+            obstacle.x > gameState.camera.x - canvas.width &&
+            obstacle.x < gameState.camera.x + canvas.width * 2
+        );
 
-    function drawPlayer() {
-      const p = gameState.player;
-      const sx = p.x - gameState.camera.x;
-      ctx.fillStyle = '#ffdf00';
-      ctx.fillRect(sx, p.y, p.width, p.height);
-      // simple eye to show facing
-      ctx.fillStyle = '#333';
-      const eyeX = sx + (p.facingRight ? p.width - 12 : 4);
-      ctx.fillRect(eyeX, p.y + 12, 6, 6);
-    }
+        // Check collisions
+        gameState.obstacles.forEach((obstacle) => {
+          
+          // Collision detection
+          if (
+            !gameState.gameOver &&
+            gameState.player.x < obstacle.x + obstacle.width &&
+            gameState.player.x + gameState.player.width > obstacle.x &&
+            gameState.player.y < obstacle.y + obstacle.height &&
+            gameState.player.y + gameState.player.height > obstacle.y
+          ) {
+            gameState.gameOver = true;
+            createCrashParticles();
+            document.getElementById('gameOver').style.display = 'block';
+            document.getElementById('finalScore').textContent = gameState.score;
+            document.getElementById('finalDistance').textContent = Math.floor(gameState.distance);
+            document.getElementById('finalTime').textContent = Math.floor(gameState.gameTime / 1000);
+            gameOverSound.play();
+          }
 
-    function drawObstacles() {
-      for (const o of gameState.obstacles) {
-        const sx = o.x - gameState.camera.x;
-        ctx.fillStyle = o.color;
-        ctx.fillRect(sx, o.y, o.width, o.height);
-      }
-    }
-
-    function updateUI() {
-      document.getElementById('score').textContent = gameState.score;
-      document.getElementById('distance').textContent = Math.floor(gameState.distance);
-      document.getElementById('time').textContent = Math.floor(gameState.gameTime / 1000);
-    }
-
-    // Loop
-    function loop(now) {
-      if (!gameState.gameOver) {
-        gameState.gameTime = now;
-        updatePlayer();
-        updateObstacles(now);
-        updateScore();
+          // Score for jumping over objects
+          if (
+            !obstacle.passed &&
+            (gameState.player.x > obstacle.x + obstacle.width ||
+              gameState.player.x + gameState.player.width < obstacle.x)
+          ) {
+            obstacle.passed = true;
+            gameState.score += 10;
+          }
+        });
       }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawGround();
-      drawObstacles();
-      drawPlayer();
-      updateUI();
+      function updateParticles() {
+        gameState.particles.forEach((particle) => {
+          particle.x += particle.velX;
+          particle.y += particle.velY;
+          particle.velY += 0.3; 
+          particle.life--;
+        });
 
-      requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
-  </script>
-</body>
-</html>
+        gameState.particles = gameState.particles.filter((particle) => particle.life > 0);
+      }
 
+      function updateScore() {
+
+        // score based on distance
+        const newDistance = Math.max(0, Math.abs(gameState.player.x - 100) / 10);
+        const distanceGained = newDistance - gameState.distance;
+        if (distanceGained > 0) {
+          gameState.distance = newDistance;
+          gameState.score += Math.floor(distanceGained);
+        }
+      }
+
+      function drawBackground() {
+        // sky gradient colors
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.7);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(1, '#90EE90');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height * 0.7);
+
+        // Parallax clouds background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        for (let i = 0; i < 5; i++) {
+          const cloudX = (i * 300 - gameState.camera.x * 0.3) % (canvas.width + 200) - 100;
+          const cloudY = 50 + i * 30;
+
+          ctx.beginPath();
+          ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2);
+          ctx.arc(cloudX + 25, cloudY, 35, 0, Math.PI * 2);
+          ctx.arc(cloudX + 50, cloudY, 25, 0, Math.PI * 2);
+          ctx.arc(cloudX + 25, cloudY - 25, 25, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawGround() {
+        const groundY = canvas.height - GROUND_HEIGHT;
+
+        // Ground
+        ctx.fillStyle = '#32CD32';
+        ctx.fillRect(-gameState.camera.x, groundY, canvas.width * 3, GROUND_HEIGHT);
+
+        // Grass texture
+        ctx.strokeStyle = '#228B22';
+        ctx.lineWidth = 2;
+        for (let x = (-gameState.camera.x % 20); x < canvas.width; x += 20) {
+          ctx.beginPath();
+          ctx.moveTo(x, groundY);
+          ctx.lineTo(x + 3, groundY - 8);
+          ctx.lineTo(x + 6, groundY);
+          ctx.stroke();
+        }
+      }
+
+      function drawPlayer() {
+        const screenX = gameState.player.x - gameState.camera.x;
+        const player = gameState.player;
+
+        ctx.save();
+        if (!player.facingRight) {
+          ctx.scale(-1, 1);
+          ctx.translate(-screenX * 2 - player.width, 0);
+        }
+        ctx.drawImage(dogSprite, screenX, player.y, player.width, player.height);
+        ctx.restore();
+      }
+
+      function drawTiger() {
+        if (!gameState.tiger.active) return;
+
+        const screenX = gameState.tiger.x - gameState.camera.x;
+        const tiger = gameState.tiger;
+
+        ctx.save();
+        if (!tiger.chasingRight) {
+          ctx.scale(-1, 1);
+          ctx.translate(-screenX * 2 - tiger.width, 0);
+        }
+        ctx.drawImage(tigerSprite, screenX, tiger.y, tiger.width, tiger.height);
+        ctx.restore();
+      }
+
+      function drawObstacles() {
+        gameState.obstacles.forEach((obstacle) => {
+          const screenX = obstacle.x - gameState.camera.x;
+
+          if (screenX > -100 && screenX < canvas.width + 100) {
+            ctx.fillStyle = obstacle.color;
+
+            switch (obstacle.type) {
+              case 'cactus':
+                ctx.fillRect(screenX, obstacle.y, obstacle.width, obstacle.height);
+                ctx.fillRect(screenX - 8, obstacle.y + 20, 15, 8);
+                ctx.fillRect(screenX + obstacle.width - 7, obstacle.y + 30, 15, 8);
+                ctx.fillStyle = '#006400';
+                for (let i = 0; i < 6; i++) {
+                  const spikeY = obstacle.y + i * 12;
+                  ctx.fillRect(screenX - 3, spikeY, 6, 8);
+                  ctx.fillRect(screenX + obstacle.width - 3, spikeY + 6, 6, 8);
+                }
+                break;
+
+              case 'rock':
+                ctx.beginPath();
+                ctx.ellipse(
+                  screenX + obstacle.width / 2,
+                  obstacle.y + obstacle.height / 2,
+                  obstacle.width / 2,
+                  obstacle.height / 2,
+                  0,
+                  0,
+                  Math.PI * 2
+                );
+                ctx.fill();
+                ctx.fillStyle = '#555555';
+                ctx.fillRect(screenX + 10, obstacle.y + 10, 8, 8);
+                ctx.fillRect(screenX + 25, obstacle.y + 20, 6, 6);
+                break;
+
+              case 'spike':
+                ctx.beginPath();
+                ctx.moveTo(screenX + obstacle.width / 2, obstacle.y);
+                ctx.lineTo(screenX, obstacle.y + obstacle.height);
+                ctx.lineTo(screenX + obstacle.width, obstacle.y + obstacle.height);
+                ctx.closePath();
+                ctx.fill();
+                break;
+            }
+          }
+        });
+      }
+
+      function drawParticles() {
+        gameState.particles.forEach((particle) => {
+          const screenX = particle.x - gameState.camera.x;
+          const alpha = particle.life / particle.maxLife;
+
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = particle.color;
+          ctx.fillRect(screenX - 2, particle.y - 2, 4, 4);
+          ctx.restore();
+        });
+      }
+
+      function updateUI() {
+        document.getElementById('score').textContent = gameState.score;
+        document.getElementById('distance').textContent = Math.floor(gameState.distance);
+        document.getElementById('time').textContent = Math.floor(gameState.gameTime / 1000);
+
+        // Update jump indicators
+        document.getElementById('jump1').className =
+          gameState.player.jumpsRemaining >= 1 ? 'jump-circle' : 'jump-circle used';
+        document.getElementById('jump2').className =
+          gameState.player.jumpsRemaining >= 2 ? 'jump-circle' : 'jump-circle used';
+
+        // Update tiger status
+        const tigerStatus = document.getElementById('tigerStatus');
+        if (!gameState.tiger.active && gameState.gameTime < TIGER_SPAWN_TIME * 1000) {
+          const timeLeft = Math.ceil((TIGER_SPAWN_TIME * 1000 - gameState.gameTime) / 1000);
+          tigerStatus.textContent = `🐅 Tiger in: ${timeLeft}s`;
+          tigerStatus.style.color = timeLeft <= 3 ? '#ff4444' : '#ffff00';
+        } else if (gameState.tiger.active) {
+          const distance = Math.floor(Math.abs(gameState.player.x - gameState.tiger.x));
+          tigerStatus.textContent = `🐅 Tiger ${distance}m ${gameState.tiger.chasingRight ? 'behind' : 'ahead'}!`;
+          tigerStatus.style.color = distance < 100 ? '#ff4444' : '#ff8844';
+        }
+      }
+
+      function gameLoop(currentTime) {
+        if (!gameState.gameOver) {
+          gameState.gameTime = currentTime;
+
+          // Tiger spawn logic
+          if (!gameState.tiger.active && gameState.gameTime >= TIGER_SPAWN_TIME * 1000) {
+            if (!gameState.tigerWarningShown) {
+              document.getElementById('tigerWarning').style.display = 'block';
+              gameState.tigerWarningShown = true;
+              roarSound.play();
+
+              setTimeout(() => {
+                document.getElementById('tigerWarning').style.display = 'none';
+                gameState.tiger.active = true;
+                gameState.tiger.x = gameState.player.x - canvas.width; // Spawn behind player
+              }, 2000);
+            }
+          }
+
+          updatePlayer();
+          updateTiger();
+          updateObstacles();
+          updateParticles();
+          updateScore();
+        }
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw everything
+        drawBackground();
+        drawGround();
+        drawObstacles();
+        drawParticles();
+        drawTiger();
+        drawPlayer();
+
+        updateUI();
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      // Start the game
+      requestAnimationFrame(gameLoop);
+    </script>
+  </body>
+  </html>
