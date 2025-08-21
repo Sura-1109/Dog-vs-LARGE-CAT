@@ -16,4 +16,8 @@ D/Right arrow
 R to restart
 
 ---
+- Assets
+Save the assets for an immersive gameplay, it has sounds and 2 sprites.
+
+---
 # Thank you!
